@@ -1,4 +1,4 @@
-Package: fastDummies
+Package: fastDummiesDot
 Type: Package
 Title: Fast Creation of Dummy (Binary) Columns and Rows from Categorical Variables
 Version: 1.6.3
