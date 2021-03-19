@@ -55,27 +55,27 @@ dummy_cols <- function(.data,
                        ignore_na = FALSE,
                        split = NULL,
                        remove_selected_columns = FALSE) {
-
+  
   stopifnot(is.null(select_columns) || is.character(select_columns),
             select_columns != "",
             is.logical(remove_first_dummy), length(remove_first_dummy) == 1,
             is.logical(remove_selected_columns))
-
+  
   if (remove_first_dummy == TRUE & remove_most_frequent_dummy == TRUE) {
     stop("Select either 'remove_first_dummy' or 'remove_most_frequent_dummy'
          to proceed.")
   }
-
+  
   if (is.vector(.data)) {
     .data <- data.frame(.data = .data, stringsAsFactors = FALSE)
   }
-
+  
   data_type <- check_type(.data)
-
+  
   if (!data.table::is.data.table(.data)) {
     .data <- data.table::as.data.table(.data)
   }
-
+  
   # Grabs column names that are character or factor class -------------------
   if (!is.null(select_columns)) {
     char_cols        <- select_columns
@@ -91,19 +91,19 @@ dummy_cols <- function(.data,
     char_cols <- char_cols[char_cols %in% c("factor", "character")]
     char_cols <- names(char_cols)
   }
-
+  
   if (length(char_cols) == 0 && is.null(select_columns)) {
     stop(paste0("No character or factor columns found. ",
                 "Please use select_columns to choose columns."))
   }
-
+  
   if (!is.null(select_columns) && length(cols_not_in_data) > 0) {
     warning(paste0("NOTE: The following select_columns input(s) ",
                    "is not a column in data.\n"),
             paste0(names(cols_not_in_data), "\t"))
   }
-
-
+  
+  
   for (col_name in char_cols) {
     # If factor type, order by assigned levels
     if (is.factor(.data[[col_name]])) {
@@ -120,17 +120,17 @@ dummy_cols <- function(.data,
                                        numeric = TRUE)
     }
     unique_vals <- as.character(unique_vals)
-
+    
     # If there is a split value, splits up the unique_vals by that value
     # and keeps only the unique ones.
     if (!is.null(split)) {
       unique_vals <- unique(trimws(unlist(strsplit(unique_vals, split = split))))
     }
-
+    
     if (ignore_na) {
       unique_vals <- unique_vals[!is.na(unique_vals)]
     }
-
+    
     if (remove_most_frequent_dummy) {
       vals <- as.character(.data[[col_name]])
       vals <- data.frame(sort(table(vals), decreasing = TRUE),
@@ -149,7 +149,7 @@ dummy_cols <- function(.data,
       } else {
         top_vals <- as.character(top_vals$vals[2:nrow(top_vals)])
       }
-
+      
       unique_vals <- c(top_vals, other_vals)
       unique_vals <- stringr::str_sort(unique_vals,
                                        na_last = TRUE,
@@ -171,29 +171,29 @@ dummy_cols <- function(.data,
       #   unique_vals <- vals[order(match(vals, unique_vals))]
       # }
     }
-
+    
     if (remove_first_dummy) {
       unique_vals <- unique_vals[-1]
     }
-
+    
     data.table::alloc.col(.data, ncol(.data) + length(unique_vals))
-    #   data.table::set(.data, j = paste0(col_name, "_", unique_vals), value = 0L)
-    .data[, paste0(col_name, "_", unique_vals)] <- 0L
+    #   data.table::set(.data, j = paste0(col_name, ".", unique_vals), value = 0L)
+    .data[, paste0(col_name, ".", unique_vals)] <- 0L
     for (unique_value in unique_vals) {
       data.table::set(.data, i =
                         which(data.table::chmatch(
                           as.character(.data[[col_name]]),
                           unique_value, nomatch = 0) == 1L),
-                      j = paste0(col_name, "_", unique_value), value = 1L)
-
-
+                      j = paste0(col_name, ".", unique_value), value = 1L)
+      
+      
       # Sets NA values to NA, only for columns that are not the NA columns
       if (!is.na(unique_value)) {
         data.table::set(.data, i =
                           which(is.na(.data[[col_name]])),
-                        j = paste0(col_name, "_", unique_value), value = NA)
+                        j = paste0(col_name, ".", unique_value), value = NA)
       }
-
+      
       if (!is.null(split)) {
         max_split_length <- max(sapply(strsplit(as.character(.data[[col_name]]),
                                                 split = split), length))
@@ -204,23 +204,23 @@ dummy_cols <- function(.data,
                                                                   split = split),
                                                          `[`, split_length))),
                               unique_value, nomatch = 0) == 1L),
-                          j = paste0(col_name, "_", unique_value), value = 1L)
-
+                          j = paste0(col_name, ".", unique_value), value = 1L)
+          
         }
         if (is.na(unique_value)) {
-          .data[[paste0(col_name, "_", unique_value)]][which(!is.na(.data[[col_name]]))] <- 0
+          .data[[paste0(col_name, ".", unique_value)]][which(!is.na(.data[[col_name]]))] <- 0
         }
       }
     }
   }
-
+  
   if (remove_selected_columns) {
     .data <- .data[-which(names(.data) %in% char_cols)]
   }
-
+  
   .data <- fix_data_type(.data, data_type)
   return(.data)
-
+  
 }
 
 
